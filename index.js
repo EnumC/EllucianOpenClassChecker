@@ -52,7 +52,8 @@ const req = http.request(options, (res) => {
     
     res.setEncoding('utf8');
     res.on('data', (chunk) => {
-        // console.log(`BODY: ${chunk}`);
+        if (DEBUG)
+            console.log(`BODY: ${chunk}`);
         processHTML(chunk);
     });
     res.on('end', () => {
@@ -88,8 +89,10 @@ function mainLoop () {
   }
 
 function selfTest() {
+    DEBUG = true;
     req.write(postData);
     req.end();
+    DEBUG = false;
     console.info("Start Up Test completed!");
     console.info("Delay Set: " + DELAY);
 }
