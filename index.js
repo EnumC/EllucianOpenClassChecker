@@ -22,6 +22,7 @@ const HTMLParser = require('node-html-parser');
 const postData = 'term_in=201932&sel_subj=dummy&sel_subj=MATH&SEL_CRSE=D001B&SEL_TITLE=&BEGIN_HH=0&BEGIN_MI=0&BEGIN_AP=a&SEL_DAY=dummy&SEL_PTRM=dummy&END_HH=0&END_MI=0&END_AP=a&SEL_CAMP=dummy&SEL_SCHD=dummy&SEL_SESS=dummy&SEL_INSTR=dummy&SEL_INSTR=%25&SEL_ATTR=dummy&SEL_ATTR=%25&SEL_LEVL=dummy&SEL_LEVL=%25&SEL_INSM=dummy&sel_dunt_code=&sel_dunt_unit=&call_value_in=&rsts=dummy&crn=dummy&path=1&SUB_BTN=View+Sections';
 const DEBUG = false;
 const DELAY = 300000;
+// const DELAY = 5000;
 
 const options = {
     hostname: 'ssb-prod.ec.fhda.edu',
@@ -38,14 +39,14 @@ const options = {
         'Referer': 'https://ssb-prod.ec.fhda.edu/PROD/bwskfcls.P_GetCrse',
         'Accept-Encoding': 'gzip, deflate, br',
         'Accept-Language': 'en-US,en;q=0.9',
-        'Cookie': 'SESSID=ME4wTDBWMjAyMTE5Nw==; AWSELB=8FC3B10C7C6F2E81FB85778EC82E80B35F6053EB3FB0A326C415E62DF224C6255601225080A4895B1FADB06E83D852FA6F81C67E509E4E18558FABBC3EF5CBEEFF6B9E6D; IDMSESSID=7d8856bb-d16d-4db6-b6c1-440f36287eef; shib_idp_session=9766c641142e703ec558d833d28e8ceffd3a207dba7723a1bd099351530fd2b2',
+        'Cookie': 'SESSID=MkRDUFk3MjAyMTE5Nw==; AWSELB=8FC3B10C7C6F2E81FB85778EC82E80B35F6053EB3FB0A326C415E62DF224C6255601225080A4895B1FADB06E83D852FA6F81C67E509E4E18558FABBC3EF5CBEEFF6B9E6D; IDMSESSID=7d8856bb-d16d-4db6-b6c1-440f36287eef; shib_idp_session=9766c641142e703ec558d833d28e8ceffd3a207dba7723a1bd099351530fd2b2',
         
         'Content-Type': 'application/x-www-form-urlencoded',
         'Content-Length': Buffer.byteLength(postData)
     }
 };
 
-const req = http.request(options, (res) => {
+var req = http.request(options, (res) => {
     if (DEBUG) {
         console.log(`STATUS: ${res.statusCode}`);
         console.log(`HEADERS: ${JSON.stringify(res.headers)}`);
@@ -60,6 +61,7 @@ const req = http.request(options, (res) => {
     res.on('end', () => {
         if (DEBUG)
             console.log('No more data in response.');
+        req.end();
     });
 });
 
@@ -74,6 +76,7 @@ req.on('error', (e) => {
 
 
 try {
+    // getSessionCookie();
     selfTest();
     mainLoop();
 }
@@ -84,8 +87,29 @@ catch(err) {
 
 function mainLoop () {
     setTimeout(function () {
+        var req = http.request(options, (res) => {
+            if (DEBUG) {
+                console.log(`STATUS: ${res.statusCode}`);
+                console.log(`HEADERS: ${JSON.stringify(res.headers)}`);
+            }
+            
+            res.setEncoding('utf8');
+            res.on('data', (chunk) => {
+                if (DEBUG)
+                    console.log(`BODY: ${chunk}`);
+                processHTML(chunk);
+            });
+            res.on('end', () => {
+                if (DEBUG)
+                    console.log('No more data in response.');
+                req.end();
+            });
+        });
+
+
         req.write(postData);
-        
+        if (DEBUG)
+            console.log("New req");
         mainLoop();
     }, DELAY);
   }
@@ -96,8 +120,22 @@ function selfTest() {
     console.info("Delay Set: " + DELAY);
 }
 
+function getSessionCookie() {
+    //Does not work until we login directly to myportal
+    var loginURL = 'https://ssb-prod.ec.fhda.edu/ssomanager/saml/login?relayState=%2Fc%2Fauth%2FSSB%3Fpkg%3Dhttps%3A%2F%2Fssb-prod.ec.fhda.edu%2FPROD%2Ffhda_uportal.P_DeepLink_Post%3Fp_page%3Dbwskfcls.p_sel_crse_search%26p_payload%3De30%3D'
+    request(loginURL, function (error, response, body) {
+        console.log('error:', error); // Print the error if one occurred
+        console.log('statusCode:', response && response.statusCode); // Print the response status code if a response was received
+        console.log('body:', body); // Print the HTML for the Google homepage.
+    });
+}
 function processHTML (data) {
     const root = HTMLParser.parse(data);
+    if (data.toString().includes("Session timeout occurred")) {
+        console.log(colors.red("SESSION TIMEOUT"));
+        console.log(colors.red(Date()));
+
+    }
     root.querySelectorAll('tr').forEach(function(item, index) {
         if(index === 0) {
             var itemTarget = item.toString();
