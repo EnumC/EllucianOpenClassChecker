@@ -77,6 +77,7 @@ try {
     mainLoop();
 }
 catch(err) {
+    console.warn(err);
     alertERR(err);
 }
 
