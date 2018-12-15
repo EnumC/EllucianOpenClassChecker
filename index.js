@@ -14,6 +14,7 @@
 // --data 'term_in=201932&sel_subj=dummy&sel_subj=MATH&SEL_CRSE=D001B&SEL_TITLE=&BEGIN_HH=0&BEGIN_MI=0&BEGIN_AP=a&SEL_DAY=dummy&SEL_PTRM=dummy&END_HH=0&END_MI=0&END_AP=a&SEL_CAMP=dummy&SEL_SCHD=dummy&SEL_SESS=dummy&SEL_INSTR=dummy&SEL_INSTR=%25&SEL_ATTR=dummy&SEL_ATTR=%25&SEL_LEVL=dummy&SEL_LEVL=%25&SEL_INSM=dummy&sel_dunt_code=&sel_dunt_unit=&call_value_in=&rsts=dummy&crn=dummy&path=1&SUB_BTN=View+Sections' 
 // --compressed
 
+
 const http = require('https');
 const request = require('request');
 const colors = require('colors/safe');
@@ -37,7 +38,7 @@ const options = {
         'Referer': 'https://ssb-prod.ec.fhda.edu/PROD/bwskfcls.P_GetCrse',
         'Accept-Encoding': 'gzip, deflate, br',
         'Accept-Language': 'en-US,en;q=0.9',
-        'Cookie': 'SESSID=TUJPQUhSMjAyMTE5Nw==; shib_idp_session=584ca4655821d0f2e4017912f0fcc1e400613e0062544267d8d79613c9b8fe00; AWSELB=8FC3B10C7C6F2E81FB85778EC82E80B35F6053EB3FB0A326C415E62DF224C6255601225080A4895B1FADB06E83D852FA6F81C67E509E4E18558FABBC3EF5CBEEFF6B9E6D; IDMSESSID=7d8856bb-d16d-4db6-b6c1-440f36287eef',
+        'Cookie': 'SESSID=ME4wTDBWMjAyMTE5Nw==; AWSELB=8FC3B10C7C6F2E81FB85778EC82E80B35F6053EB3FB0A326C415E62DF224C6255601225080A4895B1FADB06E83D852FA6F81C67E509E4E18558FABBC3EF5CBEEFF6B9E6D; IDMSESSID=7d8856bb-d16d-4db6-b6c1-440f36287eef; shib_idp_session=9766c641142e703ec558d833d28e8ceffd3a207dba7723a1bd099351530fd2b2',
         
         'Content-Type': 'application/x-www-form-urlencoded',
         'Content-Length': Buffer.byteLength(postData)
@@ -90,10 +91,8 @@ function mainLoop () {
   }
 
 function selfTest() {
-    DEBUG = true;
     req.write(postData);
     req.end();
-    DEBUG = false;
     console.info("Start Up Test completed!");
     console.info("Delay Set: " + DELAY);
 }
