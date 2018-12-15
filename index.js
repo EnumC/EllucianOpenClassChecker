@@ -83,7 +83,7 @@ function mainLoop () {
     setTimeout(function () {
         req.write(postData);
         req.end();
-        theLoop();
+        mainLoop();
     }, DELAY);
   }
 
