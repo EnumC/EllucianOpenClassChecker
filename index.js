@@ -85,14 +85,13 @@ catch(err) {
 function mainLoop () {
     setTimeout(function () {
         req.write(postData);
-        req.end();
+        
         mainLoop();
     }, DELAY);
   }
 
 function selfTest() {
     req.write(postData);
-    req.end();
     console.info("Start Up Test completed!");
     console.info("Delay Set: " + DELAY);
 }
@@ -149,3 +148,21 @@ function alertERR(err) {
         }
     );
 }
+
+
+if (process.platform === "win32") {
+    var rl = require("readline").createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+  
+    rl.on("SIGINT", function () {
+      process.emit("SIGINT");
+    });
+  }
+  
+  process.on("SIGINT", function () {
+    //graceful shutdown
+    req.end();
+    process.exit();
+  });
