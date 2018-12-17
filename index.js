@@ -19,10 +19,10 @@ const http = require('https');
 const request = require('request');
 const colors = require('colors/safe');
 const HTMLParser = require('node-html-parser');
+const cron = require('cron');
 const postData = 'term_in=201932&sel_subj=dummy&sel_subj=MATH&SEL_CRSE=D001B&SEL_TITLE=&BEGIN_HH=0&BEGIN_MI=0&BEGIN_AP=a&SEL_DAY=dummy&SEL_PTRM=dummy&END_HH=0&END_MI=0&END_AP=a&SEL_CAMP=dummy&SEL_SCHD=dummy&SEL_SESS=dummy&SEL_INSTR=dummy&SEL_INSTR=%25&SEL_ATTR=dummy&SEL_ATTR=%25&SEL_LEVL=dummy&SEL_LEVL=%25&SEL_INSM=dummy&sel_dunt_code=&sel_dunt_unit=&call_value_in=&rsts=dummy&crn=dummy&path=1&SUB_BTN=View+Sections';
 const DEBUG = false;
-const DELAY = 300000;
-// const DELAY = 5000;
+const DELAY = 5;
 
 const options = {
     hostname: 'ssb-prod.ec.fhda.edu',
@@ -78,15 +78,21 @@ req.on('error', (e) => {
 try {
     // getSessionCookie();
     selfTest();
-    mainLoop();
+    initProg();
 }
 catch(err) {
     console.warn(err);
     alertERR(err);
 }
 
-function mainLoop () {
-    setTimeout(function () {
+function initProg() {
+
+    var keepAlive = cron.job("30 6 * * *", function(){
+        alertKeepAlive();
+        console.info('Daily Keepalive email sent!');
+    }); 
+    
+    var mainLogic = cron.job('0 */' + DELAY.toString() + ' * * * *', function(){
         var req = http.request(options, (res) => {
             if (DEBUG) {
                 console.log(`STATUS: ${res.statusCode}`);
@@ -106,18 +112,21 @@ function mainLoop () {
             });
         });
 
-
         req.write(postData);
         if (DEBUG)
             console.log("New req");
-        mainLoop();
-    }, DELAY);
-  }
+    }); 
+
+    keepAlive.start();
+    mainLogic.start();
+
+}
 
 function selfTest() {
     req.write(postData);
+    alertKeepAlive();
     console.info("Start Up Test completed!");
-    console.info("Delay Set: " + DELAY);
+    console.info("Delay Set: " + DELAY + " minute(s)");
 }
 
 function getSessionCookie() {
@@ -169,19 +178,44 @@ function alertIFTTT() {
                 console.log(colors.green("OPEN SPACE FOUND!"));
                 console.log(colors.bold('=================\n\n\n'));
             }
+            else {
+                console.err(colors.red("alertIFTTT() request failed!"));
+            }
         }
     );
 }
 
 function alertERR(err) {
+    var that = this;
     request.post(
         'https://maker.ifttt.com/trigger/classErr/with/key/oaG31UULhfKGrvD6OoMM61Y08fHQEzPFlbO4qJJbWPk',
-        { json: { value1: Date(), value2: err } },
+        { json: { value1: Date(), value2: that.err } },
         function (error, response, body) {
             if (!error && response.statusCode == 200) {
+                console.log(err);
                 console.log(body);
                 console.error("PROGRAM EXCEPTION. Notification sent!");
                 console.log(Date());
+            }
+            else {
+                console.err(colors.red("alertERR() request failed!"));
+            }
+        }
+    );
+}
+
+function alertKeepAlive() {
+    request.post(
+        'https://maker.ifttt.com/trigger/classReport/with/key/oaG31UULhfKGrvD6OoMM61Y08fHQEzPFlbO4qJJbWPk',
+        { json: { value1: "Jian Yu  Yu" } },
+        function (error, response, body) {
+            if (!error && response.statusCode == 200) {
+                // console.log(body);
+                console.info("Daily KeepAlive Notification sent!");
+                console.log(Date());
+            }
+            else {
+                console.err(colors.red("alertKeepAlive() request failed!"));
             }
         }
     );
@@ -201,6 +235,7 @@ if (process.platform === "win32") {
   
   process.on("SIGINT", function () {
     //graceful shutdown
+    console.log("Exiting...");
     req.end();
     process.exit();
   });
