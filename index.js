@@ -20,11 +20,17 @@ const request = require('request');
 const colors = require('colors/safe');
 const HTMLParser = require('node-html-parser');
 const cron = require('cron');
-const postData = 'term_in=201932&sel_subj=dummy&sel_subj=MATH&SEL_CRSE=D001B&SEL_TITLE=&BEGIN_HH=0&BEGIN_MI=0&BEGIN_AP=a&SEL_DAY=dummy&SEL_PTRM=dummy&END_HH=0&END_MI=0&END_AP=a&SEL_CAMP=dummy&SEL_SCHD=dummy&SEL_SESS=dummy&SEL_INSTR=dummy&SEL_INSTR=%25&SEL_ATTR=dummy&SEL_ATTR=%25&SEL_LEVL=dummy&SEL_LEVL=%25&SEL_INSM=dummy&sel_dunt_code=&sel_dunt_unit=&call_value_in=&rsts=dummy&crn=dummy&path=1&SUB_BTN=View+Sections';
+const postData = 'term_in=202112&sel_subj=dummy&sel_subj=CHEM&SEL_CRSE=D001A&SEL_TITLE=&BEGIN_HH=0&BEGIN_MI=0&BEGIN_AP=a&SEL_DAY=dummy&SEL_PTRM=dummy&END_HH=0&END_MI=0&END_AP=a&SEL_CAMP=dummy&SEL_SCHD=dummy&SEL_SESS=dummy&SEL_INSTR=dummy&SEL_INSTR=%25&SEL_ATTR=dummy&SEL_ATTR=%25&SEL_LEVL=dummy&SEL_LEVL=%25&SEL_INSM=dummy&sel_dunt_code=&sel_dunt_unit=&call_value_in=&rsts=dummy&crn=dummy&path=1&SUB_BTN=View+Sections';
+const COOKIE = 'SESSID=';
 const DEBUG = false;
-const DELAY = 5;
-// const DELAY = 1;
-var retryCt = 0;
+// const DELAY = 5;
+const DELAY = 1;
+var retryCt = 3;
+const CRN = '00209';      // Set Target CRN here
+const PROFNAME = '<td CLASS="dddefault">Megan Brunjes  Brophy </td>';
+const ACTNUM = '30';      // The number listed under "Act"
+const REMNUM = '0';       // The number listed under "Rem"
+const WLREM  = '0';       // The number listed under "WL Rem"
 
 const options = {
     hostname: 'ssb-prod.ec.fhda.edu',
@@ -34,14 +40,14 @@ const options = {
     headers: {
         'Connection': 'keep-alive',
         'Cache-Control': 'max-age=0',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.97 Safari/537.36',
         'Origin': 'https://ssb-prod.ec.fhda.edu',
         'DNT': '1',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
         'Referer': 'https://ssb-prod.ec.fhda.edu/PROD/bwskfcls.P_GetCrse',
         'Accept-Encoding': 'gzip, deflate, br',
         'Accept-Language': 'en-US,en;q=0.9',
-        'Cookie': 'SESSID=MFJHU1lXMjAyMTE5Nw==; AWSELB=8FC3B10C7C6F2E81FB85778EC82E80B35F6053EB3FB0A326C415E62DF224C6255601225080A4895B1FADB06E83D852FA6F81C67E509E4E18558FABBC3EF5CBEEFF6B9E6D; IDMSESSID=7d8856bb-d16d-4db6-b6c1-440f36287eef; shib_idp_session=9766c641142e703ec558d833d28e8ceffd3a207dba7723a1bd099351530fd2b2',
+        'Cookie': COOKIE,
         
         'Content-Type': 'application/x-www-form-urlencoded',
         'Content-Length': Buffer.byteLength(postData)
@@ -152,13 +158,20 @@ function processHTML (data) {
         }
         
     }
-    root.querySelectorAll('tr').forEach(function(item, index) {
-        if(index === 0) {
+    var found = false;
+    var ctIndex = 0;
+    root.querySelectorAll('tr').forEach(function(item, index, array) {
+        // if(index === 0) { // index of the course listing. Ex: 1st = 0, 2nd = 1, etc.
             var itemTarget = item.toString();
-            if(itemTarget.includes('Jian Yu  Yu')) {
+            // console.log(itemTarget);
+            if(itemTarget.includes(PROFNAME) && itemTarget.includes(CRN)) {
+                // console.info("FOUND TARGET PROF");
+                // console.log(itemTarget);
+                found = true;
                 if (DEBUG)
                     console.log("\n\n\n\n\n\n" + item + index );
-                if(!itemTarget.includes('<td CLASS="dddefault">0</td>\n' + '<td CLASS="dddefault">Jian Yu  Yu (<ABBR title= "Primary">P</ABBR>)</td>')) {
+                    
+                if(!itemTarget.includes('<td CLASS="dddefault">' + ACTNUM + '</td>\n' + '<td CLASS="dddefault">' + REMNUM + '</td>\n' + '<td CLASS="dddefault">' + WLREM + '</td>\n' + PROFNAME)) {
                     alertIFTTT();
                 }
                 else {
@@ -166,17 +179,28 @@ function processHTML (data) {
                 }
                 if (DEBUG)
                     console.log("END OF PARSE\n\n\n\n\n\n")
+                ctIndex++;
             }
-        }
+
+            if (ctIndex == array.length && !found) {
+                console.log(colors.red("CONFIG ERROR: INDEX MISCONFIGURED"));
+                ctIndex = 0;
+            }
+            // else {
+            //     console.error("CONFIG ERROR: INDEX MISCONFIGURED");
+            // }
+        // }
         
       });
+
+      
     // console.log(data);
 }
 
 function alertIFTTT() {
     request.post(
         'https://maker.ifttt.com/trigger/classOpen/with/key/oaG31UULhfKGrvD6OoMM61Y08fHQEzPFlbO4qJJbWPk',
-        { json: { value1: Date() } },
+        { json: { value1: Date(), value2: CRN, value3: PROFNAME } },
         function (error, response, body) {
             if (!error && response.statusCode == 200) {
                 console.log(body);
@@ -195,7 +219,7 @@ function alertIFTTT() {
 function alertERR(err) {
     request.post(
         'https://maker.ifttt.com/trigger/classErr/with/key/oaG31UULhfKGrvD6OoMM61Y08fHQEzPFlbO4qJJbWPk',
-        { json: { value1: Date(), value2: err } },
+        { json: { value1: Date(), value2: err, value3: CRN} },
         function (error, response, body) {
             if (!error && response.statusCode == 200) {
                 console.log(err);
@@ -213,7 +237,7 @@ function alertERR(err) {
 function alertKeepAlive() {
     request.post(
         'https://maker.ifttt.com/trigger/classReport/with/key/oaG31UULhfKGrvD6OoMM61Y08fHQEzPFlbO4qJJbWPk',
-        { json: { value1: "Jian Yu  Yu" } },
+        { json: { value1: Date(), value2: CRN, value3: PROFNAME } },
         function (error, response, body) {
             if (!error && response.statusCode == 200) {
                 // console.log(body);
